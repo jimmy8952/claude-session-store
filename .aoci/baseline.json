@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-19T10:36:02Z",
-  "updated_at": "2026-11-19T12:45:14Z",
+  "updated_at": "2026-11-19T13:18:07Z",
   "files": {
     ".gitattributes": {
       "role": "index",
@@ -27,17 +27,23 @@
       "size": 5618,
       "normalized_sha256": "174947ce7914b067b20b56e09bd5a081aee9cc73df45f31020406703fb4d48ab"
     },
+    "LICENSE": {
+      "role": "index",
+      "sha256": "66df2852aad72bf7a07307519324df12cfd4b6aa559fbf387c0aa20ae3a834da",
+      "size": 1062,
+      "normalized_sha256": "66df2852aad72bf7a07307519324df12cfd4b6aa559fbf387c0aa20ae3a834da"
+    },
     "README.md": {
       "role": "index",
-      "sha256": "94037644a8c807802eed79a1766eab6af062a11d5a7f61f856056e5548408442",
-      "size": 3994,
-      "normalized_sha256": "94037644a8c807802eed79a1766eab6af062a11d5a7f61f856056e5548408442"
+      "sha256": "ae560be1c76311115eee9eaadd31f6c073847723a7745d4d0a62f22858dbc9cf",
+      "size": 4022,
+      "normalized_sha256": "ae560be1c76311115eee9eaadd31f6c073847723a7745d4d0a62f22858dbc9cf"
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "9f3db417e4c68809f6a69285cb185846691fd792d9b321c5e9bcea10af1b62bf",
-      "size": 6702,
-      "normalized_sha256": "9f3db417e4c68809f6a69285cb185846691fd792d9b321c5e9bcea10af1b62bf"
+      "sha256": "3ae28f9a20a1b21a129ecd98cbcf38bbdd61d702b3a956dc4fa6c99df576a274",
+      "size": 6904,
+      "normalized_sha256": "3ae28f9a20a1b21a129ecd98cbcf38bbdd61d702b3a956dc4fa6c99df576a274"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -65,9 +71,9 @@
     },
     "package.json": {
       "role": "index",
-      "sha256": "7121ddfb0e6a78e680845cf85ea534b52ebc2b211337298b0f52977b1c15990c",
-      "size": 551,
-      "normalized_sha256": "7121ddfb0e6a78e680845cf85ea534b52ebc2b211337298b0f52977b1c15990c"
+      "sha256": "4b6079b713c082473cb2477d1ab11e69ba15e298cf8886efddb3a2df1a43575e",
+      "size": 664,
+      "normalized_sha256": "4b6079b713c082473cb2477d1ab11e69ba15e298cf8886efddb3a2df1a43575e"
     },
     "src/cli.js": {
       "role": "index",
