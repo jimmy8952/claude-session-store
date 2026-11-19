@@ -4,7 +4,7 @@
 .gitattributes[FV4T]: F:全仓库 text=auto eol=lf：强制 LF 检出，保证 AOCI baseline 逐字节校验在任何平台一致 | R:- | A:- | S:-
 .gitignore[FV3T]: F:忽略 node_modules、.DS_Store、tgz 包与 AOCI 机器绑定的宿主集成文件（.mcp.json 及备份）；索引资产 aoci.txt 等是正式托管文件，不在此列 | R:- | A:- | S:-
 AGENTS.md[SG4S]: F:AOCI 生成的 agent 接入规范：仓库认知层的工作原理、aoci 工具最小入口、建立与恢复认知的流程约束 | R:- | A:- | S:<!-- aoci:begin --> 区块由 AOCI 治理，语义以 aoci_rules 与实时 Guide 为准，手改会与维护流程冲突
-CLAUDE.md[SG6T]: F:Claude Code 项目指南：双数据流架构、projectKey/去重/轮次接力/保留策略机制、hook 安全约束、测试与发布注意事项 | R:- | A:- | S:-
+CLAUDE.md[SG6T]: F:Claude Code 项目指南：双数据流架构、projectKey/去重/轮次接力/保留策略机制、hook 安全约束、测试与发布注意事项、AOCI 认知层使用约定 | R:- | A:- | S:-
 README.md[SG4T]: F:用户文档：功能说明、npm 安装、日常命令表、配置项、maxChars 上限与故障排查 | R:- | A:- | S:强调卸载必须先 ccstore uninstall 再删全局包，反序会让 hook 指向不存在的脚本、每个 Claude 会话报 hook 错误
 claude-session-store 技术设计文档.md[SG4L]: F:十五章完整设计：背景、总体架构、项目识别、SessionEnd/SessionStart 流程、transcript 解析与压缩、跨会话轮次合并、裁剪版会话、存储、CLI、安装卸载、边界与测试计划 | R:- | A:- | S:-
 package.json[FV7T]: F:npm 包清单：零依赖（仅内置 node:sqlite）、bin 指向 bin/ccstore.js、engines ≥22.13、test 脚本固定单并发 | R:code:bin/ccstore.js | A:- | S:test 脚本的 --test-concurrency=1 不可去掉：测试 sandbox 会改写全局 process.env，并发运行会互相污染
