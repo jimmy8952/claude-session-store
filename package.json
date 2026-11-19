@@ -24,5 +24,9 @@
     "session",
     "memory"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jimmy8952/claude-session-store.git"
+  },
   "license": "MIT"
 }

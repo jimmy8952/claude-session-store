@@ -76,3 +76,7 @@ npm uninstall -g claude-session-store
 - Claude Code 的会话文件格式没有公开文档，升级后可能需要更新本工具。注入方式只读取会话文件，不往里写，所以受格式变化的影响最小。
 - 注入的两轮是“背景材料”，不是真实的对话历史；要用真实历史，请用 `ccstore resume`。
 - Windows 未测试。
+
+## License
+
+[MIT](LICENSE)
