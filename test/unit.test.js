@@ -1,14 +1,63 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { test } from 'node:test';
 import { itemsToLines, toolLine } from '../src/compress.js';
 import { renderContext } from '../src/render.js';
 import { activeChain, extractTurns, isRealPrompt, parseJsonl } from '../src/transcript.js';
 import { buildTrimmedJsonl, segmentFromChain } from '../src/trim.js';
 import { addOurHooks, isOurCommand, stripOurHooks } from '../src/install.js';
-import { Transcript } from './helpers.js';
+import { openStore } from '../src/store.js';
+import { purgeExpired } from '../src/hooks.js';
+import { sandbox, Transcript } from './helpers.js';
 
 const cwd = '/tmp/proj';
+
+test('purgeOlderThan deletes only rows before the cutoff and returns them', () => {
+  sandbox();
+  const store = openStore();
+  try {
+    const mk = (key, at) =>
+      store.insert({ projectKey: key, cwd: key, sourceSessionId: at, sourceTranscript: '/t.jsonl', turns: [], promptUuids: [], createdAt: at });
+    const oldA = mk('/a', '2026-10-01T00:00:00.000Z');
+    const oldB = mk('/b', '2026-10-19T23:59:59.999Z');
+    const fresh = mk('/a', '2026-11-19T00:00:00.000Z');
+    const removed = store.purgeOlderThan('2026-10-20T00:00:00.000Z');
+    assert.deepEqual(removed.map((r) => r.id).sort((x, y) => x - y), [oldA, oldB].sort((x, y) => x - y));
+    assert.equal(store.get(oldA), null);
+    assert.equal(store.get(oldB), null);
+    assert.ok(store.get(fresh));
+  } finally {
+    store.close();
+  }
+});
+
+test('purgeExpired removes old rows plus their trimmed session files', () => {
+  const { env } = sandbox();
+  const store = openStore();
+  try {
+    fs.writeFileSync(path.join(env.CCSTORE_HOME, 'old.jsonl'), '{}\n');
+    fs.writeFileSync(path.join(env.CCSTORE_HOME, 'new.jsonl'), '{}\n');
+    const mk = (file, at) =>
+      store.insert({ projectKey: '/p', cwd: '/p', sourceSessionId: at, sourceTranscript: '/t.jsonl', turns: [], promptUuids: [], createdAt: at, trimmedTranscript: path.join(env.CCSTORE_HOME, file) });
+    mk('old.jsonl', '2026-09-01T00:00:00.000Z');
+    const keep = mk('new.jsonl', '2026-11-18T00:00:00.000Z');
+    const r = purgeExpired(store, { maxAgeDays: 30 });
+    assert.equal(r.rows, 1);
+    assert.equal(r.files, 1);
+    assert.ok(!fs.existsSync(path.join(env.CCSTORE_HOME, 'old.jsonl')), 'old trimmed file deleted');
+    assert.ok(fs.existsSync(path.join(env.CCSTORE_HOME, 'new.jsonl')), 'fresh trimmed file kept');
+    assert.ok(store.get(keep));
+    // a second run over the same data is a no-op, and a missing file does not throw
+    store.insert({ projectKey: '/p', cwd: '/p', sourceSessionId: 'x', sourceTranscript: '/t.jsonl', turns: [], promptUuids: [], createdAt: '2026-08-01T00:00:00.000Z' });
+    const r2 = purgeExpired(store, { maxAgeDays: 30 });
+    assert.equal(r2.rows, 1);
+    assert.equal(r2.files, 0);
+  } finally {
+    store.close();
+  }
+});
 
 test('turns: tool results, commands, reminders, injected context are not prompts', () => {
   const t = new Transcript({ cwd });

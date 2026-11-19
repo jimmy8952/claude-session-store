@@ -6,7 +6,7 @@ import { projectKey } from './project.js';
 import { formatTime, renderContext } from './render.js';
 import { dbPath, openStore } from './store.js';
 import { install, installState, MIN_NODE, nodeVersionOk, settingsPath, uninstall } from './install.js';
-import { saveSnapshot } from './hooks.js';
+import { purgeExpired, saveSnapshot } from './hooks.js';
 
 const short = (id) => (id ? `${id.slice(0, 8)}…` : '—');
 const oneLine = (s, n = 50) => {
@@ -64,6 +64,7 @@ export function cmdStatus() {
   console.log(`hook 安装状态  SessionStart ${state.SessionStart ? '✓' : '✗'}   SessionEnd ${state.SessionEnd ? '✓' : '✗'}`);
   console.log(`数据库         ${dbPath()}`);
   console.log(`配置           ${fs.existsSync(configPath()) ? configPath() : '默认（无 config.json）'}  turns=${cfg.turns} maxChars=${cfg.maxChars}`);
+  console.log(`保留策略       每项目 ${cfg.keepPerProject} 条；超过 ${cfg.maxAgeDays} 天的快照连同裁剪版文件一并清理`);
   console.log(`当前项目键     ${key}`);
   const store = openStore();
   try {
@@ -173,6 +174,23 @@ export function cmdForget(args) {
   const store = openStore();
   try {
     console.log(`已删除 ${store.forget(key)} 条快照`);
+  } finally {
+    store.close();
+  }
+}
+
+export function cmdPrune(args) {
+  const cfg = loadConfig();
+  let days = cfg.maxAgeDays;
+  const i = args.indexOf('--days');
+  if (i >= 0) {
+    days = Number(args[i + 1]);
+    if (!Number.isFinite(days) || days < 1) throw new Error('--days 需要一个不小于 1 的数字');
+  }
+  const store = openStore();
+  try {
+    const r = purgeExpired(store, cfg, days);
+    console.log(r.rows ? `已删除 ${r.rows} 条 ${days} 天前的快照（含 ${r.files} 个裁剪版会话文件）` : `没有 ${days} 天前的快照`);
   } finally {
     store.close();
   }

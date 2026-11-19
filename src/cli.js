@@ -1,6 +1,6 @@
 import { log } from './paths.js';
 import { sessionEnd, sessionStart } from './hooks.js';
-import { cmdForget, cmdInstall, cmdList, cmdResume, cmdSave, cmdShow, cmdStatus, cmdUninstall } from './commands.js';
+import { cmdForget, cmdInstall, cmdList, cmdPrune, cmdResume, cmdSave, cmdShow, cmdStatus, cmdUninstall } from './commands.js';
 
 const HELP = `ccstore — Claude Code 会话记忆（每个项目记住最近两轮）
 
@@ -12,6 +12,7 @@ const HELP = `ccstore — Claude Code 会话记忆（每个项目记住最近两
   ccstore show [编号] [--ids]  显示将注入的文字（--ids 显示完整 session ID）
   ccstore resume [编号]        打开备用的裁剪版会话（claude --resume）
   ccstore forget [--yes]       删除当前项目的全部快照
+  ccstore prune [--days N]     立即清理超过 N 天（默认 30）的旧快照及其裁剪版文件
   ccstore save                 手动为当前目录最近的会话做一次快照
 
 环境变量：
@@ -66,6 +67,8 @@ export async function main(argv) {
         return cmdResume(args);
       case 'forget':
         return cmdForget(args);
+      case 'prune':
+        return cmdPrune(args);
       case 'save':
         return cmdSave();
       case undefined:

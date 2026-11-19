@@ -8,6 +8,7 @@ export const DEFAULTS = Object.freeze({
   maxChars: 9000,
   injectOnClear: false,
   keepPerProject: 50,
+  maxAgeDays: 30,
   writeTrimmedSession: true,
 });
 
@@ -40,6 +41,7 @@ export function loadConfig() {
   cfg.turns = Math.max(1, Number(cfg.turns) || DEFAULTS.turns);
   cfg.maxChars = Math.max(1000, Number(cfg.maxChars) || DEFAULTS.maxChars);
   cfg.keepPerProject = Math.max(1, Number(cfg.keepPerProject) || DEFAULTS.keepPerProject);
+  cfg.maxAgeDays = Math.max(1, Number(cfg.maxAgeDays) || DEFAULTS.maxAgeDays);
   return cfg;
 }
 

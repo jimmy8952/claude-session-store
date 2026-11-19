@@ -30,6 +30,7 @@ ccstore status            # 改动后快速自检
 - **projectKey**（`project.js`）：git 仓库根（`git rev-parse --show-toplevel`，2 秒超时），非 git 目录用目录本身。同仓库子目录共享快照。
 - **去重**：快照记录全部 prompt UUID；无新 prompt 则跳过保存——「打开没提问就退出」不产生新快照靠它实现。
 - **轮次接力**：当前会话不足 N 轮时从上一快照按 promptUuid 携带旧轮；裁剪版会话由 `segmentFromPrevious` + `segmentFromChain` 两段拼接。
+- **保留策略**：双层——每项目 `keepPerProject`（50）条数上限（`saveSnapshot` 插入后 `store.prune`）；全库 `maxAgeDays`（30）天滚动窗口，`purgeExpired()` 在每次 SessionEnd 保存路径开头清扫（含删除对应裁剪版文件），`ccstore prune [--days N]` 手动触发。`created_at` 是 ISO 字符串，过期判断直接字典序比较。
 - **双表示**：`turns_json`（压缩版，注入用）与 `trimmed_jsonl`（全保真版，`ccstore resume` 用，库里也存一份以便文件被清理后恢复）。
 - CLI 命令实现在 `commands.js`，`bin/ccstore.js` 是入口，`install.js` 负责 settings.json 的合并/备份/原子写入（临时文件 + rename）。
 

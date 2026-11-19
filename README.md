@@ -31,6 +31,7 @@ ccstore install
 | `ccstore show [编号] --ids` | 完整的原始 session ID 和裁剪版 session ID |
 | `ccstore resume [编号]` | 打开备用的裁剪版会话（真实历史，可 `/rewind`）；文件已被 Claude Code 清理时会从数据库恢复 |
 | `ccstore forget --yes` | 删除当前项目的全部快照 |
+| `ccstore prune [--days N]` | 立即清理超过 N 天（默认 30）的旧快照及其裁剪版文件 |
 | `ccstore save` | 手动为当前目录最近的会话做一次快照（例如安装前已有的会话） |
 
 临时不想带记忆：`CCSTORE_FRESH=1 claude`。完全停用：`CCSTORE_DISABLE=1`，或运行 `ccstore uninstall`。
@@ -46,11 +47,14 @@ ccstore install
   "maxChars": 9000,
   "injectOnClear": false,
   "keepPerProject": 50,
+  "maxAgeDays": 30,
   "writeTrimmedSession": true
 }
 ```
 
 `maxChars` 默认 9000，用来控制注入的长度。你的提问永远不截断，只截 Claude 的回答；如果光提问就超过上限，就原样注入，hook 不会报错。修改 `injectOnClear` 后需要重新运行 `ccstore install`。
+
+保留策略有两层：每个项目最多留 `keepPerProject` 条（50），全库超过 `maxAgeDays` 天（30）的快照连同裁剪版会话文件一并删除——每次会话结束保存时自动清扫，`ccstore prune` 可随时手动触发。
 
 ## 数据
 

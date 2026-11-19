@@ -1,8 +1,15 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { endHook, gitInit, makeDir, runCli, sandbox, startHook, Transcript } from './helpers.js';
+
+function ageAllRows(storeDb, iso) {
+  const db = new DatabaseSync(storeDb);
+  db.prepare('UPDATE snapshots SET created_at = ?').run(iso);
+  db.close();
+}
 
 function ctx(r) {
   return r.json?.hookSpecificOutput?.additionalContext ?? null;
@@ -135,6 +142,34 @@ test('resume restores a cleaned-up trimmed file and runs claude --resume in the 
   assert.match(r.stdout, /ARGS=--resume [0-9a-f-]{36}/);
   assert.ok(r.stdout.includes(`CWD=${dir}`));
   assert.ok(other);
+});
+
+test('snapshots older than maxAgeDays are purged with their trimmed files on the next session end; prune does it by hand', () => {
+  const { root, env } = sandbox();
+  const db = path.join(env.CCSTORE_HOME, 'store.db');
+  const dir = makeDir(root, 'age');
+
+  const t1 = new Transcript({ cwd: dir });
+  t1.turn('旧问题', '旧回答');
+  endHook(t1, t1.write(), env);
+  const oldFile = runCli(['show', '--ids'], { env, cwd: dir }).stdout.match(/裁剪版文件\s+(\S+)/)[1];
+  assert.ok(fs.existsSync(oldFile));
+
+  // age the row past the window, then end any session: the save path sweeps the store
+  ageAllRows(db, '2026-09-01T00:00:00.000Z');
+  const t2 = new Transcript({ cwd: dir });
+  t2.turn('新问题', '新回答');
+  endHook(t2, t2.write(), env);
+  assert.ok(!fs.existsSync(oldFile), 'old trimmed file removed');
+  assert.equal((runCli(['list'], { env, cwd: dir }).stdout.match(/#\d+/g) || []).length, 1);
+
+  // manual prune: default window from config, bad --days rejected
+  ageAllRows(db, '2026-09-02T00:00:00.000Z');
+  assert.equal(runCli(['prune', '--days', 'x'], { env }).code, 1);
+  assert.match(runCli(['prune'], { env }).stdout, /已删除 1 条 30 天前的快照（含 1 个裁剪版会话文件）/);
+  assert.equal(runCli(['list'], { env, cwd: dir }).stdout.match(/#\d+/g), null);
+  assert.match(runCli(['prune'], { env }).stdout, /没有 30 天前的快照/);
+  assert.match(runCli(['status'], { env, cwd: dir }).stdout, /保留策略\s+每项目 50 条；超过 30 天/);
 });
 
 test('install / uninstall against settings.json', () => {

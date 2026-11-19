@@ -158,4 +158,12 @@ export class Store {
   forget(projectKey) {
     return Number(this.db.prepare('DELETE FROM snapshots WHERE project_key = ?').run(projectKey).changes);
   }
+
+  /** Deletes every snapshot saved before the cutoff (ISO strings compare lexicographically) and returns the removed rows. */
+  purgeOlderThan(cutoffIso) {
+    const rows = this.db.prepare('SELECT id, trimmed_transcript FROM snapshots WHERE created_at < ?').all(cutoffIso);
+    const del = this.db.prepare('DELETE FROM snapshots WHERE id = ?');
+    for (const r of rows) del.run(r.id);
+    return rows;
+  }
 }

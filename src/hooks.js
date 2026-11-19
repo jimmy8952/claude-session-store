@@ -12,6 +12,24 @@ function disabled(cfg) {
   return !cfg.enabled || envFlag('CCSTORE_DISABLE');
 }
 
+/** Deletes snapshots older than cfg.maxAgeDays across all projects, together with their trimmed session files. */
+export function purgeExpired(store, cfg, days) {
+  const cutoff = new Date(Date.now() - (days ?? cfg.maxAgeDays) * 24 * 60 * 60 * 1000).toISOString();
+  const rows = store.purgeOlderThan(cutoff);
+  let files = 0;
+  for (const r of rows) {
+    if (r.trimmed_transcript) {
+      try {
+        fs.unlinkSync(r.trimmed_transcript);
+        files++;
+      } catch {
+        // already gone or never written
+      }
+    }
+  }
+  return { rows: rows.length, files };
+}
+
 /**
  * Save a snapshot for a finished session. Returns { saved, reason, id? }.
  * Used by the SessionEnd hook and by `ccstore save`.
@@ -33,6 +51,8 @@ export function saveSnapshot({ session_id, transcript_path, cwd, reason }, { for
 
   const store = openStore();
   try {
+    purgeExpired(store, cfg);
+
     const known = store.knownPromptUuids(key);
     if (!turns.some((t) => !known.has(t.promptUuid))) return { saved: false, reason: 'no new prompts' };
 
