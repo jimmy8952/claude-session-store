@@ -45,3 +45,7 @@ ccstore status            # 改动后快速自检
 - 用户可见文案（帮助、注入文本、压缩行、日志）均为中文，保持一致。
 - **`bin/ccstore.js` 必须保留可执行位**：npm link 的 shim 依赖它，Finder 拷贝/移动目录会丢 +x，症状是 `ccstore` 报 permission denied，`chmod +x bin/ccstore.js` 修复。
 - **卸载顺序**：先 `ccstore uninstall` 再删全局包，反了的话 hook 指向的脚本不存在，Claude Code 会报 hook 错误（见 README）。
+
+## AOCI 认知层
+
+开始本仓库的任务前，先调用 mcp__aoci__aoci_overview 装载完整项目认知（一次调用约 3000 tokens，经 Challenge 校验）；改动代码收尾时调用 aoci_maintain 维护索引。索引描述与源码冲突时，以源码为准并顺手修索引。
