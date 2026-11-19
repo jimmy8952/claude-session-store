@@ -1,0 +1,29 @@
+#AOCI-CODE-VOLUME: 1
+
+===/Users/jimmy/project/claude-session-store/===
+.gitattributes[FV4T]: F:全仓库 text=auto eol=lf：强制 LF 检出，保证 AOCI baseline 逐字节校验在任何平台一致 | R:- | A:- | S:-
+.gitignore[FV3T]: F:忽略 node_modules、.DS_Store、tgz 包与 AOCI 机器绑定的宿主集成文件（.mcp.json 及备份）；索引资产 aoci.txt 等是正式托管文件，不在此列 | R:- | A:- | S:-
+AGENTS.md[SG4S]: F:AOCI 生成的 agent 接入规范：仓库认知层的工作原理、aoci 工具最小入口、建立与恢复认知的流程约束 | R:- | A:- | S:<!-- aoci:begin --> 区块由 AOCI 治理，语义以 aoci_rules 与实时 Guide 为准，手改会与维护流程冲突
+CLAUDE.md[SG6T]: F:Claude Code 项目指南：双数据流架构、projectKey/去重/轮次接力/保留策略机制、hook 安全约束、测试与发布注意事项 | R:- | A:- | S:-
+README.md[SG4T]: F:用户文档：功能说明、npm 安装、日常命令表、配置项、maxChars 上限与故障排查 | R:- | A:- | S:强调卸载必须先 ccstore uninstall 再删全局包，反序会让 hook 指向不存在的脚本、每个 Claude 会话报 hook 错误
+claude-session-store 技术设计文档.md[SG4L]: F:十五章完整设计：背景、总体架构、项目识别、SessionEnd/SessionStart 流程、transcript 解析与压缩、跨会话轮次合并、裁剪版会话、存储、CLI、安装卸载、边界与测试计划 | R:- | A:- | S:-
+package.json[FV7T]: F:npm 包清单：零依赖（仅内置 node:sqlite）、bin 指向 bin/ccstore.js、engines ≥22.13、test 脚本固定单并发 | R:code:bin/ccstore.js | A:- | S:test 脚本的 --test-concurrency=1 不可去掉：测试 sandbox 会改写全局 process.env，并发运行会互相污染
+
+===/Users/jimmy/project/claude-session-store/bin/===
+ccstore.js[EG8T]: F:可执行入口：在加载任何模块前拦截 node:sqlite 的 ExperimentalWarning，校验 Node ≥22.13 后动态加载 CLI | R:code:src/cli.js | A:- | S:本文件必须保留可执行位（npm link 的 shim 依赖它），权限丢失表现为 ccstore 报 permission denied
+
+===/Users/jimmy/project/claude-session-store/src/===
+cli.js[RR9T]: F:CLI 分发与 hook 统一出口：解析子命令、读 stdin JSON；hook 路径捕获全部异常只写日志并强制 exitCode=0 | R:code:src/hooks.js,code:src/commands.js | A:main,runHook | S:SessionStart 的 stdout 被 Claude Code 当 JSON 解析，任何非协议输出都会弄坏注入——日志一律走 paths.log 写文件，绝不打印到 stdout
+commands.js[AB7M]: F:全部 CLI 子命令：install/uninstall/status/list/show/resume/forget/prune/save；resume 在裁剪版文件丢失时从数据库恢复 | R:code:src/store.js,code:src/install.js,code:src/render.js,code:src/project.js | A:cmdInstall,cmdUninstall,cmdStatus,cmdResume,cmdSave | S:cmdSave 用已知 trimmed_session_id 排除裁剪版文件，防止把裁剪版会话再当源快照造成套娃
+compress.js[DB7S]: F:把工具调用压成一行中文摘要：文件操作按动词归类，≥3 个同动词连续操作折叠为一行；工具输出本身永不保留 | R:code:src/render.js,code:src/trim.js | A:toolLine,toolTarget,itemsToLines,oneLine | S:-
+hooks.js[EB9S]: F:两个 hook 入口：saveSnapshot 读会话链、切轮次、去重后写库并清扫过期快照；sessionStart 按项目键取最新快照渲染注入 JSON | R:code:src/transcript.js,code:src/store.js,code:src/render.js,code:src/trim.js,code:src/project.js | A:saveSnapshot,sessionStart,sessionEnd,purgeExpired | S:只对 startup（及可选 clear）注入；resume/continue/compact 等来源自带真实历史，放开会造成整段历史重复注入
+install.js[IC8S]: F:向 ~/.claude/settings.json 安装/卸载 hook：按命令特征识别自家条目、替换去重、先备份再用临时文件 rename 原子写入 | R:code:src/paths.js | A:install,uninstall,addOurHooks,stripOurHooks,installState | S:settings.json 是用户全局配置：非法 JSON 时拒绝修改；SessionStart matcher 由 injectOnClear 决定，改配置后必须重新 install 才生效
+paths.js[CC7T]: F:路径与配置基座：CCSTORE_HOME/CLAUDE_CONFIG_DIR 解析、config.json 与默认值合并并钳制下限、hook.log 文件日志、envFlag 开关 | R:- | A:loadConfig,storeHome,claudeDir,ensureStoreHome,log | S:-
+project.js[CG7T]: F:计算项目键 projectKey：git 仓库根（git rev-parse，2 秒超时），非 git 目录用目录本身，是快照分区与注入的同一依据 | R:- | A:projectKey | S:路径先 realpath 再拼接（macOS /tmp 等符号链接），否则同一目录会派生两个项目键、快照互不可见
+render.js[DU8T]: F:把轮次渲染成注入文本并在 maxChars 内截断：先压旧轮回答再压最新轮（中段截断），用户提问永不截断 | R:code:src/compress.js,code:src/transcript.js | A:renderContext,middleTruncate,formatTime | S:maxChars 默认 9000，因 Claude Code 对 SessionStart hook 输出上限约 10000 字符；调大注入会被拒绝或截断
+store.js[PD9S]: F:SQLite 持久层（node:sqlite）：snapshots/meta 表、按项目键的查询与 promptUuid 去重、每项目条数 prune、全库按天数 purge | R:code:src/paths.js,code:src/hooks.js | A:openStore,insert,latest,prune,purgeOlderThan | S:store.db 打不开时改名 .corrupt-<时间戳> 后重建，绝不向 hook 抛错；created_at 为 ISO 字符串，过期判断与排序都依赖字典序
+transcript.js[DD9S]: F:解析 Claude Code 会话 JSONL：activeChain 沿 parentUuid 反走当前分支处理 /rewind 分叉，isRealPrompt 过滤伪 prompt，extractTurns 切轮次 | R:code:src/compress.js,code:src/render.js | A:activeChain,extractTurns,isRealPrompt,readEntries,isSdkSession | S:isRealPrompt 过滤含 CONTEXT_MARKER 的消息以防注入文本被再存为快照；改标记必须与 render.js 同步
+trim.js[DD7T]: F:生成可 claude --resume 的裁剪版会话 JSONL：重接 parentUuid 单链、改写 sessionId、清 toolUseResult、tool_result 压成一行，末尾追加 custom-title | R:code:src/transcript.js,code:src/compress.js | A:buildTrimmedJsonl,segmentFromPrevious,segmentFromChain,trimmedTitle | S:-
+
+===/Users/jimmy/project/claude-session-store/test/===
+helpers.js[TQ8S]: F:测试基座：sandbox() 建临时 HOME 并改写全局 env，Transcript 类按 Claude Code 真实格式构造会话 JSONL，runCli 以子进程跑真实 CLI | R:code:bin/ccstore.js,code:src/transcript.js | A:sandbox,Transcript,runCli,startHook,endHook | S:sandbox 改写 process.env 是 --test-concurrency=1 存在的原因；会话 fixture 一律用 Transcript 构造，不得手写 JSONL

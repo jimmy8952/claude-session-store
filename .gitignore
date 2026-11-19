@@ -1,3 +1,7 @@
 node_modules/
 .DS_Store
 *.tgz
+
+# AOCI agent host integration (machine-bound; do not commit)
+.mcp.json
+.mcp.json.backup.*
