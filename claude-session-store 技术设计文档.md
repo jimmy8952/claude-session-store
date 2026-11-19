@@ -80,11 +80,12 @@ hook 从 stdin 收到的 JSON（字段已对照官方文档和本机 Claude Code
 
 1. 环境变量 `CCSTORE_DISABLE=1` 时直接退出。
 2. 读 transcript，按第 6 节解析出当前分支上的全部轮次。
-3. **判断有没有新提问。** 一个提问算“新”，当且仅当它的消息 uuid 不在该项目已有快照里。没有新提问就退出，不写任何东西。这同时覆盖了两种情况：打开就退出；用 `ccstore resume` 打开裁剪版后没问任何问题就退出（裁剪版保留了原消息的 uuid）。
-4. 按第 7 节得到要保存的两轮。
-5. 按第 6 节渲染成文字（工具已压缩）。
-6. 按第 9 节生成裁剪版会话文件。
-7. 在一个事务里写入快照，然后按保留策略清理该项目的旧快照。
+3. **清扫过期快照**（第 10 节保留策略的时间层）：删除全库超过 `maxAgeDays` 天的快照及其裁剪版文件。放在这一步意味着即使本轮没有新提问、不写快照，清扫也照常执行。
+4. **判断有没有新提问。** 一个提问算“新”，当且仅当它的消息 uuid 不在该项目已有快照里。没有新提问就退出，不写任何东西。这同时覆盖了两种情况：打开就退出；用 `ccstore resume` 打开裁剪版后没问任何问题就退出（裁剪版保留了原消息的 uuid）。
+5. 按第 7 节得到要保存的两轮。
+6. 按第 6 节渲染成文字（工具已压缩）。
+7. 按第 9 节生成裁剪版会话文件。
+8. 在一个事务里写入快照，然后按保留策略清理该项目的旧快照（条数层）。
 
 SessionEnd 默认只有 1.5 秒预算。安装时给这个 hook 设 `timeout: 30`，Claude Code 会把预算提高到这个值。实际耗时预计在 200 毫秒以内。
 
@@ -260,7 +261,11 @@ CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);  -- schema_version 等
 
 “新提问”判断（第 5 节）查的是该项目全部快照的 `prompt_uuids`。
 
-**保留策略**：每个项目保留最近 50 条快照（`keepPerProject`）。删除快照时不删 `~/.claude/projects/` 里的裁剪版文件，让 Claude Code 自己清理。
+**保留策略**：双层，防止 `store.db` 和裁剪版文件无限增长。
+
+- **条数层**：每个项目保留最近 50 条快照（`keepPerProject`），写入快照后由 `Store.prune()` 执行。这一层按条数裁剪时**不删** `~/.claude/projects/` 里的裁剪版文件，让 Claude Code 自己清理。
+- **时间层**：全库删除 `created_at` 早于 `now - maxAgeDays`（默认滚动 30 天）的快照，由 `purgeExpired()` 执行。触发点在 SessionEnd 保存路径的第 3 步——每次会话结束都清扫，即使本轮没写快照；`ccstore prune [--days N]` 可随时手动触发。这一层**连同被删快照的裁剪版会话文件一并删除**（路径在行的 `trimmed_transcript` 字段里，文件缺失不报错），否则这些文件会泄漏。
+- 过期判断不对 `created_at` 做日期解析：写入和 cutoff 都用 `Date.prototype.toISOString()`，ISO 8601 字符串字典序即时间序，SQL 里直接 `<` 比较。
 
 **配置 `config.json`**
 
@@ -271,6 +276,7 @@ CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);  -- schema_version 等
 | `maxChars` | `9000` | 注入文字上限 |
 | `injectOnClear` | `false` | `/clear` 后是否也注入 |
 | `keepPerProject` | `50` | 每个项目保留的快照数 |
+| `maxAgeDays` | `30` | 快照最长保留天数（滚动窗口），过期即连裁剪版文件一起删除 |
 | `writeTrimmedSession` | `true` | 是否生成备用裁剪版会话 |
 
 ## 11. CLI 命令
@@ -286,6 +292,7 @@ CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);  -- schema_version 等
 | `ccstore show [编号]` | 打印注入文字，和 Claude 看到的一致；默认最新一条 |
 | `ccstore resume [编号]` | 打开备用裁剪版会话（第 9 节） |
 | `ccstore forget [--yes]` | 删除当前项目的全部快照 |
+| `ccstore prune [--days N]` | 立即执行保留策略的时间层：删除超过 N 天（默认取 `maxAgeDays`）的快照及其裁剪版文件 |
 | `ccstore save` | 手动对当前目录最近的会话做一次快照，用于安装前已有的会话 |
 | `ccstore hook <session-end\|session-start>` | 内部入口，由 hook 调用 |
 
@@ -381,6 +388,7 @@ npm uninstall -g claude-session-store
 | 裁剪版 | 首条 `parentUuid` 为 null；`sessionId` 全部替换；tool\_use 与 tool\_result 一一配对；末尾有 custom-title；跨快照拼接后链完整 |
 | 项目键 | git 子目录 → 根目录；非 git 目录 → 自身；符号链接展开 |
 | SessionEnd | 有新提问写快照；无提问不写；resume 裁剪版后无提问不写；`-p` 会话跳过；异常时退出码仍为 0 |
+| 保留 | cutoff 边界两侧的行删留正确；过期行连同裁剪版文件删除、未过期不动；同一批数据二次清扫为空操作；裁剪版文件已缺失不报错；`prune --days` 非法参数退出码 1；`status` 显示保留策略 |
 | SessionStart | `startup` 且有快照 → 输出 JSON；`resume` / `clear` / `compact` / `fork` → 无输出；无快照 → 无输出；`CCSTORE_FRESH=1` → 无输出 |
 | 安装 | 空 settings 文件；已有其他 hook 时合并不覆盖；重复安装不重复；卸载只删自己的；备份文件存在 |
 | 实机验证 | 用本机真实的 `claude` 跑一遍：提问两次 → 退出 → 重新启动，确认 Claude 能说出上次聊了什么；`ccstore resume` 能打开裁剪版 |
