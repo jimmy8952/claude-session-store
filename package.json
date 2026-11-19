@@ -1,0 +1,28 @@
+{
+  "name": "claude-session-store",
+  "version": "0.1.0",
+  "description": "Remember the last two turns of every Claude Code project: saved on exit, injected on the next fresh start.",
+  "type": "module",
+  "bin": {
+    "ccstore": "bin/ccstore.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test --test-concurrency=1 test/*.test.js"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "hooks",
+    "session",
+    "memory"
+  ],
+  "license": "MIT"
+}
